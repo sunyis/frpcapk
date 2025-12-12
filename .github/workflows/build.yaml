@@ -17,6 +17,15 @@ jobs:
     strategy:
       matrix:
         GO_ARCH: [ "386", amd64, arm, arm64 ]
+        include:
+          - GO_ARCH: "386"
+            LIB_DIR: "x86"
+          - GO_ARCH: "amd64"
+            LIB_DIR: "x86_64"
+          - GO_ARCH: "arm"
+            LIB_DIR: "armeabi-v7a"
+          - GO_ARCH: "arm64"
+            LIB_DIR: "arm64-v8a"
     steps:
       - uses: actions/checkout@v3
 
@@ -46,13 +55,16 @@ jobs:
           ./install_frp.sh frpc $GOARCH $LIB 
           ./install_frp.sh frps $GOARCH $LIB 
 
-      - name: Upload to Artifact
-        uses: actions/upload-artifact@v4  # 改为 v4
+      # 关键修改：每个架构上传到不同的 artifact 名称
+      - name: Upload Architecture Libs
+        uses: actions/upload-artifact@v4
         with:
-          name: "app_libs"
-          path: "${{ github.workspace }}/app/libs"
-          overwrite: true  # 添加这一行          
-          merge-multiple: true
+          name: "app_libs_${{ matrix.LIB_DIR }}"
+          path: "${{ github.workspace }}/app/libs/${{ matrix.LIB_DIR }}"
+          if-no-files-found: error
+          compression-level: 6
+          include-hidden-files: false
+
   android:
     runs-on: ubuntu-latest
     needs: [ go ]
@@ -71,11 +83,20 @@ jobs:
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
 
-      - name: Download Artifact
-        uses: actions/download-artifact@v4  # 改为 v4
+      # 关键修改：下载所有架构的 artifacts 并合并
+      - name: Download All Architecture Libs
+        uses: actions/download-artifact@v4
         with:
-          name: "app_libs"
+          pattern: app_libs_*
           path: "${{ github.workspace }}/app/libs"
+          merge-multiple: true
+
+      - name: Verify Downloaded Libs
+        run: |
+          echo "Checking downloaded libraries:"
+          find "${{ github.workspace }}/app/libs" -type f -name "*.so" | sort
+          echo "Total .so files found:"
+          find "${{ github.workspace }}/app/libs" -type f -name "*.so" | wc -l
 
       - name: Init Signature
         run: |
@@ -95,12 +116,35 @@ jobs:
 
       - name: Upload missing_rules.txt
         if: failure() && steps.gradle.outcome != 'success'
-        uses: actions/upload-artifact@v4  # 改为 v4
+        uses: actions/upload-artifact@v4
         with:
           name: "missing_rules"
           path: "${{ github.workspace }}/app/build/outputs/mapping/release/missing_rules.txt"
 
       - name: Init APP Version Name
+        run: |
+          echo "ver_name=$(grep -m 1 'versionName' ${{ env.output }}/output-metadata.json | cut -d\" -f4)" >> $GITHUB_ENV
+
+      - name: Upload App To Artifact arm64-v8a
+        if: success () || failure ()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "FrpAndroid-v${{ env.ver_name }}_arm64-v8a"
+          path: "${{ env.output }}/*-v8a.apk"
+
+      - name: Upload App To Artifact arm-v7a
+        if: success () || failure ()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "FrpAndroid-v${{ env.ver_name }}_arm-v7a"
+          path: "${{ env.output }}/*-v7a.apk"
+
+      - name: Upload App To Artifact x86
+        if: success () || failure ()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "FrpAndroid-v${{ env.ver_name }}_x86"
+          path: "${{ env.output }}/*_x86.apk"      - name: Init APP Version Name
         run: |
           echo "ver_name=$(grep -m 1 'versionName' ${{ env.output }}/output-metadata.json | cut -d\" -f4)" >> $GITHUB_ENV
 
