@@ -72,7 +72,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-
+      - name: Setup local.properties
+        run: echo "sdk.dir=$HOME/Android/Sdk" > local.properties
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
 
