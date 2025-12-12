@@ -51,6 +51,7 @@ jobs:
         with:
           name: "app_libs"
           path: "${{ github.workspace }}/app/libs"
+          overwrite: true  # 添加这一行          
 
   android:
     runs-on: ubuntu-latest
