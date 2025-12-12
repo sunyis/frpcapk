@@ -45,18 +45,10 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
-    signingConfigs {
-        release {
-            storeFile file(pro["KEY_PATH"])
-            storePassword pro["KEY_PASSWORD"]
-            keyAlias pro["ALIAS_NAME"]
-            keyPassword pro["ALIAS_PASSWORD"]
-        }
-    }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            signingConfig signingConfigs.debug
 //            manifestPlaceholders = [applicationId: "com.github.jing332.frpandroid"]
 
             minifyEnabled true
@@ -65,7 +57,7 @@ android {
         }
 
         debug {
-            signingConfig signingConfigs.release
+        //    signingConfig signingConfigs.release
 
             minifyEnabled false
 //            shrinkResources true
