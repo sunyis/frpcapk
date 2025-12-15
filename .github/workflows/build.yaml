@@ -54,7 +54,7 @@ jobs:
          # name: "app_libs"
           name: "app_libs_${{ matrix.GO_ARCH }}"  # 可以按架构命名以避免冲突  
           path: "${{ github.workspace }}/app/libs"
-          overwrite: true
+          overwrite: false
           if-no-files-found: warn
           compression-level: 6
           include-hidden-files: false
@@ -81,7 +81,7 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
-          name: "app_libs"
+          name: "app_libs_${{ matrix.GO_ARCH }}"  # 使用与上传时一致的名称
           path: "${{ github.workspace }}/app/libs"
 
       - name: Grant execute permission for gradlew
