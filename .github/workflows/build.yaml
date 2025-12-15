@@ -48,7 +48,7 @@ jobs:
 
       # 关键修改：if 条件放在 uses 之后，with 之前
       - name: Upload to Artifact
-        if: matrix.GO_ARCH == 'arm64'  # 只有 arm64 架构会上传
+       # if: matrix.GO_ARCH == 'arm64'  # 只有 arm64 架构会上传
         uses: actions/upload-artifact@v4
         with:
           name: "app_libs"
