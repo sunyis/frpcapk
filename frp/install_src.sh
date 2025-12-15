@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 可以在这里修改版本号
-FRP_VERSION="0.51.2"
+FRP_VERSION="0.28.2"
 TAG_NAME="v${FRP_VERSION}"
 
 URL="https://github.com/fatedier/frp/archive/refs/tags/${TAG_NAME}.tar.gz"
