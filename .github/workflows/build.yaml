@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        GO_ARCH: [ "386", amd64, arm, arm64 ]
+        GO_ARCH: ["386", "amd64", "arm", "arm64"]
     steps:
       - uses: actions/checkout@v3
 
@@ -32,27 +32,36 @@ jobs:
           cache-dependency-path: ${{ github.workspace }}/frp/frp-*/go.sum
 
       - name: Build
+        shell: bash
         run: |
+          set -euo pipefail
           cd $GITHUB_WORKSPACE/frp
           chmod +x *.sh
           GOARCH=${{ matrix.GO_ARCH }}
-          
-          declare -A goarch2cc=( ["arm64"]="aarch64-linux-android32-clang" ["arm"]="armv7a-linux-androideabi32-clang" ["amd64"]="x86_64-linux-android32-clang" ["386"]="i686-linux-android32-clang")
-          export CC="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/${goarch2cc[$GOARCH]}"
-          
-          declare -A arch2lib=( ["arm64"]="arm64-v8a" ["arm"]="armeabi-v7a" ["amd64"]="x86_64" ["386"]="x86")
-          export LIB="${arch2lib[$GOARCH]}"
-          
-          ./install_frp.sh frpc $GOARCH $LIB 
-          ./install_frp.sh frps $GOARCH $LIB 
 
-      # 关键修改：if 条件放在 uses 之后，with 之前
+          declare -A goarch2cc=( \
+            ["arm64"]="aarch64-linux-android32-clang" \
+            ["arm"]="armv7a-linux-androideabi32-clang" \
+            ["amd64"]="x86_64-linux-android32-clang" \
+            ["386"]="i686-linux-android32-clang" \
+          )
+          export CC="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/${goarch2cc[$GOARCH]}"
+
+          declare -A arch2lib=( \
+            ["arm64"]="arm64-v8a" \
+            ["arm"]="armeabi-v7a" \
+            ["amd64"]="x86_64" \
+            ["386"]="x86" \
+          )
+          export LIB="${arch2lib[$GOARCH]}"
+
+          ./install_frp.sh frpc $GOARCH $LIB
+          ./install_frp.sh frps $GOARCH $LIB
+
       - name: Upload to Artifact
-       # if: matrix.GO_ARCH == 'arm64'  # 只有 arm64 架构会上传
         uses: actions/upload-artifact@v4
         with:
-         # name: "app_libs"
-          name: "app_libs_${{ matrix.GO_ARCH }}"  # 可以按架构命名以避免冲突  
+          name: "app_libs_${{ matrix.GO_ARCH }}"
           path: "${{ github.workspace }}/app/libs"
           overwrite: false
           if-no-files-found: warn
@@ -60,10 +69,17 @@ jobs:
           include-hidden-files: false
 
   android:
+    needs: go
     runs-on: ubuntu-latest
-    needs: [ go ]
+    strategy:
+      matrix:
+        GO_ARCH: ["386", "amd64", "arm", "arm64"]
     env:
       output: "${{ github.workspace }}/app/build/outputs/apk/release"
+      JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.17-10/x64
+      JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.17-10/x64
+      GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+      GRADLE_BUILD_ACTION_CACHE_RESTORED: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -73,19 +89,22 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+
       - name: Setup local.properties
         run: echo "sdk.dir=$HOME/Android/Sdk" > local.properties
+
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
 
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
-          name: "app_libs_${{ matrix.GO_ARCH }}"  # 使用与上传时一致的名称
+          name: "app_libs_${{ matrix.GO_ARCH }}"
           path: "${{ github.workspace }}/app/libs"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
       - name: Build with Gradle
         id: gradle
         run: ./gradlew assembleRelease -build-cache --parallel --daemon --warning-mode all
@@ -102,21 +121,21 @@ jobs:
           echo "ver_name=$(grep -m 1 'versionName' ${{ env.output }}/output-metadata.json | cut -d\" -f4)" >> $GITHUB_ENV
 
       - name: Upload App To Artifact arm64-v8a
-        if: success () || failure ()
+        if: true
         uses: actions/upload-artifact@v4
         with:
           name: "FrpAndroid-v${{ env.ver_name }}_arm64-v8a"
           path: "${{ env.output }}/*-v8a.apk"
 
       - name: Upload App To Artifact arm-v7a
-        if: success () || failure ()
+        if: true
         uses: actions/upload-artifact@v4
         with:
           name: "FrpAndroid-v${{ env.ver_name }}_arm-v7a"
           path: "${{ env.output }}/*-v7a.apk"
 
       - name: Upload App To Artifact x86
-        if: success () || failure ()
+        if: true
         uses: actions/upload-artifact@v4
         with:
           name: "FrpAndroid-v${{ env.ver_name }}_x86"
