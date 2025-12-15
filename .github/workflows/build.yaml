@@ -51,7 +51,8 @@ jobs:
        # if: matrix.GO_ARCH == 'arm64'  # 只有 arm64 架构会上传
         uses: actions/upload-artifact@v4
         with:
-          name: "app_libs"
+         # name: "app_libs"
+          name: "app_libs_${{ matrix.GO_ARCH }}"  # 可以按架构命名以避免冲突  
           path: "${{ github.workspace }}/app/libs"
           overwrite: true
           if-no-files-found: warn
