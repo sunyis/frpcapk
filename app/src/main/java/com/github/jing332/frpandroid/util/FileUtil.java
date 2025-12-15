@@ -257,3 +257,158 @@ public class FileUtil {
     }
 
 }
+            }
+            randomAccessFile.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void writeFile(String filePath, String data) {
+        try {
+            BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filePath));
+            bufferedWriter.write(data);
+            bufferedWriter.flush();
+            bufferedWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String readFile(String filePath) {
+        File file = new File(filePath);
+        if (!file.exists()) {
+            return null;
+        }
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
+            StringBuilder sb = new StringBuilder();
+            while (true) {
+                String readLine = bufferedReader.readLine();
+                if (readLine != null) {
+                    sb.append(readLine);
+                    sb.append(System.lineSeparator());
+                } else {
+                    String sb2 = sb.toString();
+                    bufferedReader.close();
+                    return sb2;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+
+
+    public static void writeZipFile(String src, String dst, String fileName) throws
+            FileNotFoundException, IOException {
+        ZipFile zipFile = new ZipFile(src);
+        InputStream inputStream = zipFile.getInputStream(zipFile.getEntry(fileName));
+        File file = new File(dst + fileName);
+        if (!file.exists()) {
+            new File(dst).mkdirs();
+        }
+        file.createNewFile();
+        BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(src));
+        while (true) {
+            int read = inputStream.read();
+            if (read != -1) {
+                bufferedOutputStream.write(read);
+            } else {
+                bufferedOutputStream.flush();
+                bufferedOutputStream.close();
+                inputStream.close();
+                return;
+            }
+        }
+    }
+
+    public static String getPath(final Context context, final Uri uri) {
+        Uri uri2 = null;
+        if ((Build.VERSION.SDK_INT >= 19) && DocumentsContract.isDocumentUri(context, uri)) {
+            if (isExternalStorageDocument(uri)) {
+                String[] split = DocumentsContract.getDocumentId(uri).split(":");
+                if ("primary".equalsIgnoreCase(split[0])) {
+                    return Environment.getExternalStorageDirectory() + "/" + split[1];
+                }
+            } else if (isDownloadsDocument(uri)) {
+                return getDataColumn(context, ContentUris.withAppendedId(Uri.parse("content://downloads/public_downloads"), Long.valueOf(DocumentsContract.getDocumentId(uri)).longValue()), null, null);
+            } else {
+                if (isMediaDocument(uri)) {
+                    String[] split2 = DocumentsContract.getDocumentId(uri).split(":");
+                    String str = split2[0];
+                    if ("image".equals(str)) {
+                        uri2 = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                    } else if (MimeTypes.BASE_TYPE_VIDEO.equals(str)) {
+                        uri2 = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+                    } else if (MimeTypes.BASE_TYPE_AUDIO.equals(str)) {
+                        uri2 = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+                    }
+                    return getDataColumn(context, uri2, "_id=?", new String[]{split2[1]});
+                }
+            }
+        } else if ("content".equalsIgnoreCase(uri.getScheme())) {
+            return getDataColumn(context, uri, null, null);
+        } else {
+            if ("file".equalsIgnoreCase(uri.getScheme())) {
+                return uri.getPath();
+            }
+        }
+        return null;
+    }
+
+    public static String getDataColumn(Context context, Uri uri, String selection, String[]
+            selectionArgs) {
+        Cursor cursor = null;
+        try {
+            Cursor query = context.getContentResolver().query(uri, new String[]{"_data"}, selection, selectionArgs, null);
+            if (query != null) {
+                try {
+                    if (query.moveToFirst()) {
+                        String string = query.getString(query.getColumnIndexOrThrow("_data"));
+                        if (query != null) {
+                            query.close();
+                        }
+                        return string;
+                    }
+                } catch (Throwable th) {
+                    th = th;
+                    cursor = query;
+                    if (cursor != null) {
+                        cursor.close();
+                    }
+                    throw th;
+                }
+            }
+            if (query != null) {
+                query.close();
+            }
+            return null;
+        } catch (Throwable th2) {
+//            th = th2;
+        }
+
+
+        return "";
+    }
+
+    public static boolean isExternalStorageDocument(Uri uri) {
+        return "com.android.externalstorage.documents".equals(uri.getAuthority());
+    }
+
+    public static boolean isDownloadsDocument(Uri uri) {
+        return "com.android.providers.downloads.documents".equals(uri.getAuthority());
+    }
+
+    public static boolean isMediaDocument(Uri uri) {
+        return "com.android.providers.media.documents".equals(uri.getAuthority());
+    }
+
+    public static String getUriFileName(Uri uri) {
+        return new File(Objects.requireNonNull(uri.getPath())).getName();
+    }
+
+}
